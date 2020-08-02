@@ -1,9 +1,9 @@
 # Data Project
 
 # load packages
-library(data.table)
-library(reshape2)
 library(dplyr)
+library(data.table)
+library(plyr)
 
 # Download Data
 if(!file.exists("data")){dir.create("data")}
@@ -12,52 +12,54 @@ download.file(fileUrl, destfile = "./data/actData.zip", method = "curl")
 unzip(zipfile = "./data/actData.zip")
 
 # Tasks:
+# 1. Merges the training and the test sets to create one data set.
+# 2. Extracts only the measurements on the mean and standard deviation for each 
+#    measurement.
 # 3. Uses descriptive activity names to name the activities in the data set
 # 4. Appropriately labels the data set with descriptive variable names.
 # 5. From the data set in step 4, creates a second, independent tidy data set 
 #    with the average of each variable for each activity and each subject.
 
-# Load activity labels and features
+# Reading activity labels and features
 actLabel <- fread(input = "UCI HAR Dataset/activity_labels.txt", 
                   col.names = c("category", "activity"))
-features <- fread(input = "UCI HAR Dataset/features.txt", 
-                  col.names = c("index", "featureNames"))
+features <- fread(input = "UCI HAR Dataset/features.txt", col.names = c("index", "features"))
 
-# Read in features and measurements 
-featuresWanted <- grep("(mean|std)\\(\\)", features[, featureNames])
-measurements <- features[featuresWanted, featureNames]
-measurements <- gsub('[()]', '', measurements)
-
-# Load training set and subset for required measurements 
-X_train <- fread(input ="UCI HAR Dataset/train/X_train.txt")[, featuresWanted, with = FALSE]
-data.table::setnames(X_train, colnames(X_train), measurements)
+# Reading training dataset, training labels and subject dataset 
+X_train <- fread(input ="UCI HAR Dataset/train/X_train.txt")
 Y_train <- fread(input = "UCI HAR Dataset/train/y_train.txt", col.names = c("activity"))
-subject_train <- fread(input = "UCI HAR Dataset/train/subject_train.txt")
-trainSet <- cbind(subject_train, Y_train, X_train)
+subject_train <- fread(input = "UCI HAR Dataset/train/subject_train.txt", col.names = c("subject_id"))
 
-# Load test set and subset for required measurements 
-X_test <- fread(input ="UCI HAR Dataset/test/X_test.txt")[, featuresWanted, with = FALSE]
-data.table::setnames(X_test, colnames(X_test), measurements)
+# Reading test dataset, test labels and subject dataset 
+X_test <- fread(input ="UCI HAR Dataset/test/X_test.txt")
 Y_test <- fread(input = "UCI HAR Dataset/test/y_test.txt", col.names = c("activity"))
-subject_test <- fread(input = "UCI HAR Dataset/test/subject_test.txt")
-testSet <- cbind(subject_test, Y_test, X_test)
+subject_test <- fread(input = "UCI HAR Dataset/test/subject_test.txt", col.names = c("subject_id"))
 
-# Merge the training and the test sets to create one data set, with only 
-# the measurements on the mean and standard deviation for each.
-dataSet <- rbind(trainSet, testSet)
+# Merge datasets 
+X_data <- rbind(X_train, X_test)
+colnames(X_data) <- features$features
+Y_data <- rbind(Y_train, Y_test)
+subject_data <- rbind(subject_train, subject_test)
+dataSet <- cbind(subject_data, Y_data, X_data)
 
-# Convert classLabels to activityName basically. More explicit. 
-combined[["Activity"]] <- factor(combined[, Activity]
-                                 , levels = actLabels[["category"]]
-                                 , labels = actLabels[["activity"]])
+# Extract only the measurements on the mean and standard deviation for each 
+# measurement.
+newDataSet <- select(dataSet, contains("subject"), contains("activity"),
+                     contains("mean"), contains("std"), - contains("freq"), - contains("angle"))
+                   
+# Use descriptive activity names to name the activities in the data set
+newDataSet$activity <- factor(newDataSet$activity, labels=tolower(actLabel$activity))
 
-combined[["SubjectNum"]] <- as.factor(combined[, SubjectNum])
-combined <- reshape2::melt(data = combined, id = c("SubjectNum", "Activity"))
-combined <- reshape2::dcast(data = combined, SubjectNum + Activity ~ variable, fun.aggregate = mean)
+# Appropriately labels the data set with descriptive variable names
+setnames(newDataSet, colnames(newDataSet), gsub("\\(\\)", "", colnames(newDataSet)))
+setnames(newDataSet, colnames(newDataSet), gsub("-", "_", colnames(newDataSet)))
+setnames(newDataSet, colnames(newDataSet), gsub("BodyBody", "Body", colnames(newDataSet)))
 
-data.table::fwrite(x = combined, file = "tidyData.txt", quote = FALSE)
+# Creates a second, independent tidy data set with the average of each variable 
+# for each activity and each subject.
+newDataSet_Summary <- ddply(newDataSet, .(subject_id, activity), numcolwise(mean))
+data.table::fwrite(x = newDataSet_Summary, file = "ActivityDataSummary.txt", quote = FALSE)
 
-
-
-
-
+                   
+                   
+                   
