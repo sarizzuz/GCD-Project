@@ -16,6 +16,6 @@ An analysis of data collected from the accelerometers from the Samsung Galaxy S 
 
 
 ## Getting started
-Read through the CodeBook and the run_analysis.R script to get a general understanding of this project, the steps taken in the analysis, and the output file.
-Make sure the experiment data is downloaded and extracted to a folder in the project directory called UCI HAR Dataset.
-Run the run_analysis.R script.
+1. Read through the CodeBook and the run_analysis.R script to get a general understanding of this project, the steps taken in the analysis, and the output file.
+2. Make sure the experiment data is downloaded and extracted to a folder in the project directory called UCI HAR Dataset.
+3. Run the run_analysis.R script.
